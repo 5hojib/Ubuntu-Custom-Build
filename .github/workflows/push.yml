@@ -1,0 +1,56 @@
+name: Build and Push Custom Ubuntu Image
+
+on:
+  push:
+  schedule:
+    - cron: "0 0 * * 0"
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v3
+
+    - name: Install debootstrap
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y debootstrap
+
+    - name: Create Ubuntu 25.04 Base Tarball
+      run: |
+        mkdir -p ubuntu-base
+        sudo debootstrap --variant=minbase plucky ubuntu-base http://archive.ubuntu.com/ubuntu/
+
+        echo "deb http://archive.ubuntu.com/ubuntu plucky main restricted universe multiverse" | sudo tee ubuntu-base/etc/apt/sources.list > /dev/null
+        echo "deb http://archive.ubuntu.com/ubuntu plucky-updates main restricted universe multiverse" | sudo tee -a ubuntu-base/etc/apt/sources.list > /dev/null
+        echo "deb http://security.ubuntu.com/ubuntu plucky-security main restricted universe multiverse" | sudo tee -a ubuntu-base/etc/apt/sources.list > /dev/null
+
+        sudo rm -rf ubuntu-base/var/cache/apt/*
+        sudo rm -rf ubuntu-base/var/lib/apt/lists/*
+        sudo rm -rf ubuntu-base/usr/share/doc/*
+        sudo rm -rf ubuntu-base/usr/share/man/*
+        sudo rm -rf ubuntu-base/usr/share/info/*
+        sudo rm -rf ubuntu-base/usr/share/locale/*
+        sudo rm -rf ubuntu-base/usr/lib/locale/*
+        sudo rm -rf ubuntu-base/var/log/*
+        sudo rm -rf ubuntu-base/tmp/*
+
+        sudo find ubuntu-base/usr/lib -name '*.a' -delete
+        sudo find ubuntu-base/usr/lib -name '*.la' -delete
+        sudo find ubuntu-base/usr/lib -name '*.so.*' -exec strip --strip-unneeded {} \;
+
+        sudo tar --numeric-owner --xattrs --acls -cf ubuntu-base.tar.gz -C ubuntu-base .
+
+    - name: Login to Docker Hub
+      uses: docker/login-action@v3
+      with:
+        username: 5hojib
+        password: ${{ secrets.DOCKERHUB_PASSWORD }}
+
+    - name: Build and Push Docker Image (Single Layer, Minimal)
+      run: |
+        docker build --squash -t 5hojib/ubuntu:latest .
+        docker push 5hojib/ubuntu:latest
