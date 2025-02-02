@@ -28,6 +28,18 @@ jobs:
         echo "deb http://archive.ubuntu.com/ubuntu plucky-updates main restricted universe multiverse" | sudo tee -a ubuntu-base/etc/apt/sources.list > /dev/null
         echo "deb http://security.ubuntu.com/ubuntu plucky-security main restricted universe multiverse" | sudo tee -a ubuntu-base/etc/apt/sources.list > /dev/null
 
+        sudo chroot ubuntu-base apt-get remove -y --purge \
+          libduktape207 \
+          libdw1 \
+          libpolkit-agent-1-0 \
+          libpolkit-gobject-1-0 \
+          polkitd \
+          sgml-base \
+          xml-core \
+          xz-utils
+
+        sudo chroot ubuntu-base apt-get autoremove -y --purge
+        
         sudo rm -rf ubuntu-base/var/cache/apt/*
         sudo rm -rf ubuntu-base/var/lib/apt/lists/*
         sudo rm -rf ubuntu-base/usr/share/doc/*
